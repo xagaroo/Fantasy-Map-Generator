@@ -2073,6 +2073,9 @@
             <button id="overviewRoutesButton" data-tip="Click to open Routes Overview" data-shortcut="Shift + U">
               Routes
             </button>
+            <button id="routeNavigationButton" data-tip="Click to find routes between burgs (navigation tool)">
+              Route Navigation
+            </button>
             <button id="editStatesButton" data-tip="Click to open States Editor" data-shortcut="Shift + S">
               States
             </button>
@@ -2914,6 +2917,9 @@
               </select>
             </span>
             <span
+              ><button id="epFlip" data-tip="Flip route direction" class="icon-exchange"></button
+            ></span>
+            <span
               ><button id="epSave" data-tip="Download the chart data as a CSV file" class="icon-download"></button
             ></span>
           </div>
@@ -2992,6 +2998,29 @@
         <div id="routeGroupsEditorBody" class="table" style="padding: 0.3em 0; width: 100%"></div>
         <div id="routeGroupsEditorBottom">
           <button id="routeGroupsEditorAdd" data-tip="Add route group" class="icon-plus"></button>
+        </div>
+      </div>
+
+      <div id="routeNavigation" class="dialog" style="display: none">
+        <div id="routeNavigationBody" style="padding: 0.5em">
+          <div id="navClickInstruction" style="margin-bottom: 1em; padding: 0.5em; background: #f0f0f0; border-radius: 4px; text-align: center; font-size: 0.95em">
+            <span style="color: #2196F3">👆 Click on map to select starting burg</span>
+          </div>
+          <div style="margin-bottom: 0.8em">
+            <div class="label">From:</div>
+            <input id="navFromBurgSearch" type="text" placeholder="Type to search or click on map..." data-tip="Type to search for starting burg or click on map" style="width: 100%; max-width: 300px; margin-bottom: 0.3em" />
+            <select id="navFromBurg" data-tip="Select starting burg" style="width: 100%; max-width: 300px" size="5"></select>
+          </div>
+          <div style="margin-bottom: 0.8em">
+            <div class="label">To:</div>
+            <input id="navToBurgSearch" type="text" placeholder="Type to search or click on map..." data-tip="Type to search for destination burg or click on map" style="width: 100%; max-width: 300px; margin-bottom: 0.3em" />
+            <select id="navToBurg" data-tip="Select destination burg" style="width: 100%; max-width: 300px" size="5"></select>
+          </div>
+          <div style="margin-bottom: 0.8em; text-align: center; display: flex; gap: 0.5em; justify-content: center">
+            <button id="navCalculate" data-tip="Calculate best routes between selected burgs" class="icon-search" style="padding: 0.5em 1em">Calculate Routes</button>
+            <button id="navReset" data-tip="Clear selections and start over" class="icon-trash" style="padding: 0.5em 1em">Clear</button>
+          </div>
+          <div id="navResults" style="margin-top: 1em; max-height: 500px; overflow-y: auto"></div>
         </div>
       </div>
 
@@ -4545,7 +4574,7 @@
       </div>
 
       <div id="provincesEditor" class="dialog stable" style="display: none">
-        <div id="provincesHeader" class="header" style="grid-template-columns: 11em 8em 8em 6em 6em 6em 8em">
+        <div id="provincesHeader" class="header" style="grid-template-columns: 11em 8em 8em 6em 6em 6em 8em 8em">
           <div data-tip="Click to sort by province name" class="sortable alphabetically" data-sortby="name">
             Province&nbsp;
           </div>
@@ -4564,6 +4593,9 @@
           <div data-tip="Click to sort by province area" class="sortable hide" data-sortby="area">Area&nbsp;</div>
           <div data-tip="Click to sort by province population" class="sortable hide" data-sortby="population">
             Population&nbsp;
+          </div>
+          <div data-tip="Click to sort by province population density" class="sortable hide" data-sortby="density">
+            Density&nbsp;
           </div>
         </div>
 
@@ -5410,6 +5442,8 @@
             data-tip="Save routes-related data as a text file (.csv)"
             class="icon-download"
           ></button>
+          <button id="routesToggleLabels" data-tip="Toggle route number labels (route-a, route-c, route-e)" class="icon-font"></button>
+          <button id="routesToggleMarks" data-tip="Toggle distance marks every 2km" class="icon-resize-horizontal"></button>
           <button id="routesLockAll" data-tip="Lock or unlock all routes" class="icon-lock"></button>
           <button id="routesRemoveAll" data-tip="Remove all routes" class="icon-trash"></button>
         </div>
@@ -8132,6 +8166,7 @@
     <script defer src="modules/ui/temperature-graph.js?v=1.106.6"></script>
     <script defer src="modules/ui/routes-editor.js?v=1.104.3"></script>
     <script defer src="modules/ui/routes-creator.js?v=1.104.3"></script>
+    <script defer src="modules/ui/route-navigation.js?v=1.0.0"></script>
     <script defer src="modules/ui/route-group-editor.js?v=1.103.8"></script>
     <script defer src="modules/ui/ice-editor.js?v=1.99.00"></script>
     <script defer src="modules/ui/lakes-editor.js?v=1.106.0"></script>
@@ -8168,6 +8203,7 @@
     <script defer src="modules/io/cloud.js?v=1.106.0"></script>
     <script defer src="modules/io/export.js?v=1.108.11"></script>
 
+    <script src="config/population-styles.js"></script>
     <script defer src="modules/renderers/draw-features.js?v=1.108.2"></script>
     <script defer src="modules/renderers/draw-borders.js?v=1.104.0"></script>
     <script defer src="modules/renderers/draw-heightmap.js?v=1.104.0"></script>

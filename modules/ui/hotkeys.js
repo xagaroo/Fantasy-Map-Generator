@@ -22,6 +22,11 @@ function handleKeyup(event) {
   const ctrl = ctrlKey || metaKey || key === "Control";
   const shift = shiftKey || key === "Shift";
 
+  // Debug WASD keys
+  if (["KeyW", "KeyA", "KeyS", "KeyD"].includes(code)) {
+    console.log(`Key pressed: ${code}, shift=${shift}, ctrl=${ctrl}`);
+  }
+
   if (code === "F1") showInfo();
   else if (code === "F2") regeneratePrompt();
   else if (code === "F6") saveMap("storage");
@@ -65,20 +70,20 @@ function handleKeyup(event) {
   else if (code === "KeyE") toggleCells();
   else if (code === "KeyG") toggleGrid();
   else if (code === "KeyO") toggleCoordinates();
-  else if (code === "KeyW") toggleCompass();
+  else if (code === "KeyW" && !isZoomed()) toggleCompass();
   else if (code === "KeyV") toggleRivers();
   else if (code === "KeyF") toggleRelief();
   else if (code === "KeyC") toggleCultures();
-  else if (code === "KeyS") toggleStates();
+  else if (code === "KeyS" && !isZoomed()) toggleStates();
   else if (code === "KeyP") toggleProvinces();
   else if (code === "KeyZ") toggleZones();
-  else if (code === "KeyD") toggleBorders();
+  else if (code === "KeyD" && !isZoomed()) toggleBorders();
   else if (code === "KeyR") toggleReligions();
   else if (code === "KeyU") toggleRoutes();
   else if (code === "KeyT") toggleTemperature();
   else if (code === "KeyN") togglePopulation();
   else if (code === "KeyJ") toggleIce();
-  else if (code === "KeyA") togglePrecipitation();
+  else if (code === "KeyA" && !isZoomed()) togglePrecipitation();
   else if (code === "KeyY") toggleEmblems();
   else if (code === "KeyL") toggleLabels();
   else if (code === "KeyI") toggleBurgIcons();
@@ -91,6 +96,22 @@ function handleKeyup(event) {
   else if (code === "ArrowRight") zoom.translateBy(svg, -10, 0);
   else if (code === "ArrowUp") zoom.translateBy(svg, 0, 10);
   else if (code === "ArrowDown") zoom.translateBy(svg, 0, -10);
+  else if (code === "KeyA" && isZoomed()) {
+    console.log("WASD: Pan left with A");
+    zoom.translateBy(svg, 10, 0);
+  }
+  else if (code === "KeyD" && isZoomed()) {
+    console.log("WASD: Pan right with D");
+    zoom.translateBy(svg, -10, 0);
+  }
+  else if (code === "KeyW" && isZoomed()) {
+    console.log("WASD: Pan up with W");
+    zoom.translateBy(svg, 0, 10);
+  }
+  else if (code === "KeyS" && isZoomed()) {
+    console.log("WASD: Pan down with S");
+    zoom.translateBy(svg, 0, -10);
+  }
   else if (key === "+" || key === "-" || key === "=") handleSizeChange(key);
   else if (key === "0") resetZoom(1000);
   else if (key === "1") zoom.scaleTo(svg, 1);
@@ -166,4 +187,12 @@ function removeElementOnKey() {
 function closeAllDialogs() {
   closeDialogs();
   hideOptions();
+}
+
+// Check if map is zoomed (scale > 1)
+function isZoomed() {
+  const transform = d3.zoomTransform(svg.node());
+  const zoomed = transform.k > 1;
+  console.log(`isZoomed check: scale=${transform.k}, zoomed=${zoomed}`);
+  return zoomed;
 }

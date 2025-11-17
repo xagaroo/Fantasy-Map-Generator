@@ -1,10 +1,30 @@
 "use strict";
 
 // data is an array of cell indexes, routeLen is the distance (in actual metres/feet), isRiver should be true for rivers, false otherwise
-function showElevationProfile(data, routeLen, isRiver) {
+// currentRouteId is optional - if provided, intersections with other routes will be shown
+function showElevationProfile(data, routeLen, isRiver, currentRouteId = null) {
+  let originalData = [...data]; // Store original order
+  let isFlipped = false;
+
   byId("epScaleRange").on("change", draw);
   byId("epCurve").on("change", draw);
+  byId("epFlip").on("click", flipDirection);
   byId("epSave").on("click", downloadCSV);
+
+  function flipDirection() {
+    isFlipped = !isFlipped;
+    data = isFlipped ? [...originalData].reverse() : [...originalData];
+
+    // Update button visual state
+    const btn = byId("epFlip");
+    if (isFlipped) {
+      btn.classList.add("pressed");
+    } else {
+      btn.classList.remove("pressed");
+    }
+
+    draw();
+  }
 
   $("#elevationProfile").dialog({
     title: "Elevation profile",
@@ -30,12 +50,14 @@ function showElevationProfile(data, routeLen, isRiver) {
   const xOffset = 80;
   const yOffset = 80;
   const biomesHeight = 10;
+  const bottomPadding = 50; // Extra space for distance labels below the profile
 
   let lastBurgIndex = 0;
   let lastBurgCell = 0;
   let burgCount = 0;
-  let chartData = {biome: [], burg: [], cell: [], height: [], mi: 1000000, ma: 0, mih: 100, mah: 0, points: []};
-  for (let i = 0, prevB = 0, prevH = -1; i < data.length; i++) {
+  let chartData = {biome: [], burg: [], cell: [], height: [], intersection: [], mi: 1000000, ma: 0, mih: 100, mah: 0, points: []};
+
+  for (let i = 0, prevB = 0, prevH = -1, prevIntersections = new Set(); i < data.length; i++) {
     let cell = data[i];
     let h = pack.cells.h[cell];
     if (h < 20) {
@@ -63,9 +85,31 @@ function showElevationProfile(data, routeLen, isRiver) {
       lastBurgCell = cell;
     }
 
+    // Check for route intersections (only for route-a, route-c, route-e groups)
+    let intersection = null;
+    const labeledGroups = ["route-a", "route-c", "route-e"];
+    if (currentRouteId !== null && pack.cells.routes && pack.cells.routes[cell]) {
+      const connections = pack.cells.routes[cell];
+      const routeIdsInCell = new Set(Object.values(connections));
+
+      // Find routes that are NOT the current route and are in labeled groups
+      for (const routeId of routeIdsInCell) {
+        if (routeId !== currentRouteId) {
+          const route = pack.routes.find(r => r.i === routeId);
+          if (route && labeledGroups.includes(route.group) && !prevIntersections.has(routeId)) {
+            // This is a new intersection (first time seeing this route)
+            intersection = {id: routeId, name: route.name || Routes.generateName(route), group: route.group};
+            prevIntersections.add(routeId);
+            break; // Only show one intersection per cell
+          }
+        }
+      }
+    }
+
     chartData.biome[i] = pack.cells.biome[cell];
     chartData.burg[i] = b;
     chartData.cell[i] = cell;
+    chartData.intersection[i] = intersection;
     let sh = getHeight(h);
     chartData.height[i] = parseInt(sh.substr(0, sh.indexOf(" ")));
     chartData.mih = Math.min(chartData.mih, h);
@@ -153,7 +197,7 @@ function showElevationProfile(data, routeLen, isRiver) {
       .select("#elevationGraph")
       .append("svg")
       .attr("width", chartWidth + 120)
-      .attr("height", chartHeight + yOffset + biomesHeight)
+      .attr("height", chartHeight + yOffset + biomesHeight + bottomPadding)
       .attr("id", "elevationSVG")
       .attr("class", "epbackground");
     // arrow-head definition
@@ -294,7 +338,9 @@ function showElevationProfile(data, routeLen, isRiver) {
       .axisBottom(xscale)
       .ticks(10)
       .tickFormat(function (d) {
-        return rn((d / chartData.points.length) * routeLen) + " " + distanceUnitInput.value;
+        const progress = d / chartData.points.length;
+        const distance = isFlipped ? rn(routeLen - (progress * routeLen)) : rn(progress * routeLen);
+        return distance + " " + distanceUnitInput.value;
       });
     const yAxis = d3
       .axisLeft(yscale)
@@ -337,6 +383,10 @@ function showElevationProfile(data, routeLen, isRiver) {
       .attr("stroke-dasharray", "4 1")
       .attr("transform", "translate(" + xOffset + "," + yOffset + ")")
       .call(yGrid);
+
+    // Group for distance markers (burgs and intersections)
+    const distanceGroup = chart.append("g").attr("id", "epdistancemarkers");
+    const distanceUnit = distanceUnitInput.value;
 
     // draw city labels - try to avoid putting labels over one another
     g = chart.append("g").attr("id", "epburglabels");
@@ -381,6 +431,119 @@ function showElevationProfile(data, routeLen, isRiver) {
           .attr("fill", "lightgray")
           .attr("stroke-width", "1")
           .attr("marker-end", "url(#arrowhead)");
+
+        // Add distance marker at burg location (use x1 to align with arrow)
+        const burgProgress = k / (chartData.points.length - 1);
+        const burgDistance = isFlipped ? rn(routeLen - (burgProgress * routeLen)) : rn(burgProgress * routeLen);
+        const burgY = chartData.points[k][1];
+
+        // Draw marker circle on the elevation line (aligned with arrow)
+        distanceGroup
+          .append("circle")
+          .attr("cx", x1)
+          .attr("cy", burgY)
+          .attr("r", 4)
+          .attr("fill", "#ff6b6b")
+          .attr("stroke", "#ffffff")
+          .attr("stroke-width", 1.5)
+          .attr("data-tip", pack.burgs[b].name + ": " + burgDistance + " " + distanceUnit)
+          .style("cursor", "pointer");
+
+        // Draw distance label next to the marker (offset to avoid overlap with burg name)
+        distanceGroup
+          .append("text")
+          .attr("x", x1)
+          .attr("y", burgY + 20)
+          .attr("text-anchor", "middle")
+          .attr("font-size", "10px")
+          .attr("font-weight", "bold")
+          .attr("fill", "#000000")
+          .attr("stroke", "#ffffff")
+          .attr("stroke-width", 0.5)
+          .attr("paint-order", "stroke")
+          .text(burgDistance + " " + distanceUnit);
+      }
+
+      // Check for route intersections at this cell
+      if (chartData.intersection[k]) {
+        const intersection = chartData.intersection[k];
+        const intersectionProgress = k / (chartData.points.length - 1);
+        const intersectionDistance = isFlipped ? rn(routeLen - (intersectionProgress * routeLen)) : rn(intersectionProgress * routeLen);
+
+        // Calculate x position same as burg labels for consistency
+        let intersectionX = chartData.points[k][0];
+        if (k > 0) intersectionX += xwidth / 2;
+        if (k == chartData.points.length - 1) intersectionX = chartWidth + xOffset;
+
+        const intersectionY = chartData.points[k][1];
+
+        // Determine color based on route group
+        let intersectionColor = "#4caf50"; // default green for route-a
+        if (intersection.group === "route-c") {
+          intersectionColor = "#ff0000"; // red
+        } else if (intersection.group === "route-e") {
+          intersectionColor = "#ff9800"; // orange
+        }
+
+        // Draw marker circle on the elevation line
+        distanceGroup
+          .append("circle")
+          .attr("cx", intersectionX)
+          .attr("cy", intersectionY)
+          .attr("r", 4)
+          .attr("fill", intersectionColor)
+          .attr("stroke", "#ffffff")
+          .attr("stroke-width", 1.5)
+          .attr("data-tip", intersection.name + ": " + intersectionDistance + " " + distanceUnit)
+          .style("cursor", "pointer");
+
+        // Draw distance label below the marker
+        distanceGroup
+          .append("text")
+          .attr("x", intersectionX)
+          .attr("y", intersectionY + 32)
+          .attr("text-anchor", "middle")
+          .attr("font-size", "10px")
+          .attr("font-weight", "bold")
+          .attr("fill", intersectionColor)
+          .attr("stroke", "#ffffff")
+          .attr("stroke-width", 0.5)
+          .attr("paint-order", "stroke")
+          .text(intersectionDistance + " " + distanceUnit);
+
+        // Draw intersection route name (above, similar to burg labels)
+        let intersectionLabelY = y1 + add;
+        if (intersectionLabelY >= yOffset) intersectionLabelY = add;
+
+        g.append("text")
+          .attr("class", "epintersectionlabel")
+          .attr("x", intersectionX)
+          .attr("y", intersectionLabelY)
+          .attr("text-anchor", "middle")
+          .attr("fill", intersectionColor)
+          .attr("font-size", "12px")
+          .attr("font-style", "italic")
+          .text("↔ " + intersection.name);
+
+        // Arrow from intersection name to graph line
+        g.append("path")
+          .attr(
+            "d",
+            "M" +
+              intersectionX.toString() +
+              "," +
+              (intersectionLabelY + 3).toString() +
+              "L" +
+              intersectionX.toString() +
+              "," +
+              parseInt(chartData.points[k][1] - 3).toString()
+          )
+          .attr("stroke", intersectionColor)
+          .attr("fill", intersectionColor)
+          .attr("stroke-width", "1")
+          .attr("marker-end", "url(#arrowhead)");
+
+        y1 = intersectionLabelY; // Update y1 to avoid label overlap
       }
     }
   }
@@ -388,8 +551,11 @@ function showElevationProfile(data, routeLen, isRiver) {
   function closeElevationProfile() {
     byId("epScaleRange").removeEventListener("change", draw);
     byId("epCurve").removeEventListener("change", draw);
+    byId("epFlip").removeEventListener("click", flipDirection);
     byId("epSave").removeEventListener("click", downloadCSV);
     byId("elevationGraph").innerHTML = "";
+    // Reset flip button state
+    byId("epFlip").classList.remove("pressed");
     modules.elevation = false;
   }
 }

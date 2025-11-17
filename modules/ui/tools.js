@@ -23,6 +23,7 @@ toolsContent.addEventListener("click", function (event) {
   else if (button === "overviewChartsButton") overviewCharts();
   else if (button === "overviewBurgsButton") overviewBurgs();
   else if (button === "overviewRoutesButton") overviewRoutes();
+  else if (button === "routeNavigationButton") openRouteNavigation();
   else if (button === "overviewRiversButton") overviewRivers();
   else if (button === "overviewMilitaryButton") overviewMilitary();
   else if (button === "overviewMarkersButton") overviewMarkers();

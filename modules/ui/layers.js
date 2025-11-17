@@ -313,7 +313,10 @@ function drawPrecipitation() {
 }
 
 function togglePopulation(event) {
-  if (!population.selectAll("line").size()) {
+  const hasCircles = population.select("#urban").selectAll("circle").size() > 0 ||
+                     population.select("#rural").selectAll("circle").size() > 0;
+
+  if (!hasCircles) {
     turnButtonOn("togglePopulation");
     drawPopulation();
     if (event && isCtrlClick(event)) editStyle("population");
@@ -321,68 +324,89 @@ function togglePopulation(event) {
     if (event && isCtrlClick(event)) return editStyle("population");
     turnButtonOff("togglePopulation");
 
-    const isD3data = population.select("line").datum();
-    if (!isD3data) {
-      // just remove
-      population.selectAll("line").remove();
-    } else {
-      // remove with animation
-      const hide = d3.transition().duration(1000).ease(d3.easeSinIn);
-      population
-        .select("#rural")
-        .selectAll("line")
-        .transition(hide)
-        .attr("y2", d => d[1])
-        .remove();
-      population
-        .select("#urban")
-        .selectAll("line")
-        .transition(hide)
-        .delay(1000)
-        .attr("y2", d => d[1])
-        .remove();
-    }
+    // Remove circles with animation
+    const hide = d3.transition().duration(800).ease(d3.easeSinIn);
+    population
+      .select("#rural")
+      .selectAll("circle")
+      .transition(hide)
+      .attr("r", 0)
+      .remove();
+    population
+      .select("#urban")
+      .selectAll("circle")
+      .transition(hide)
+      .attr("r", 0)
+      .remove();
   }
 }
 
 function drawPopulation() {
-  population.selectAll("line").remove();
+  TIME && console.time("drawPopulation");
+  // Clear only circles, not the group containers
+  population.select("#rural").selectAll("*").remove();
+  population.select("#urban").selectAll("*").remove();
 
-  const {cells, burgs} = pack;
-  const show = d3.transition().duration(2000).ease(d3.easeSinIn);
+  const {burgs} = pack;
+  const validBurgs = burgs.filter(b => b.i && !b.removed);
 
-  const rural = Array.from(
-    cells.i.filter(i => cells.pop[i] > 0),
-    i => [...cells.p[i], cells.p[i][1] - cells.pop[i] / 5]
-  );
+  // Calculate radius scale based on population
+  // Using square root scale for better visual representation of area
+  const getRadius = (pop) => {
+    const realPopulation = pop * populationRate * urbanization;
+    // Scale: radius based on square root of population
+    // Base: minimum radius of 0.5, scales up with population
+    const baseRadius = 0.5;
+    const scaleFactor = 0.015; // Adjust this to make circles larger/smaller
+    return baseRadius + Math.sqrt(realPopulation) * scaleFactor;
+  };
 
-  population
-    .select("#rural")
-    .selectAll("line")
-    .data(rural)
-    .enter()
-    .append("line")
-    .attr("x1", d => d[0])
-    .attr("y1", d => d[1])
-    .attr("x2", d => d[0])
-    .attr("y2", d => d[1])
-    .transition(show)
-    .attr("y2", d => d[2]);
+  // Group burgs by type for different styling
+  const capitals = validBurgs.filter(b => b.capital);
+  const towns = validBurgs.filter(b => !b.capital);
 
-  const urban = burgs.filter(b => b.i && !b.removed).map(b => [b.x, b.y, b.y - (b.population / 5) * urbanization]);
+  // Draw capitals with one color
   population
     .select("#urban")
-    .selectAll("line")
-    .data(urban)
+    .selectAll("circle.capital")
+    .data(capitals)
     .enter()
-    .append("line")
-    .attr("x1", d => d[0])
-    .attr("y1", d => d[1])
-    .attr("x2", d => d[0])
-    .attr("y2", d => d[1])
-    .transition(show)
-    .delay(500)
-    .attr("y2", d => d[2]);
+    .append("circle")
+    .attr("class", "capital")
+    .attr("cx", d => d.x)
+    .attr("cy", d => d.y)
+    .attr("r", 0)
+    .attr("fill", "#ff6b6b")
+    .attr("fill-opacity", 0.6)
+    .attr("stroke", "#ff0000")
+    .attr("stroke-width", 0.3)
+    .transition()
+    .duration(1000)
+    .ease(d3.easeSinOut)
+    .attr("r", d => getRadius(d.population));
+
+  // Draw towns with another color
+  population
+    .select("#rural")
+    .selectAll("circle.town")
+    .data(towns)
+    .enter()
+    .append("circle")
+    .attr("class", "town")
+    .attr("cx", d => d.x)
+    .attr("cy", d => d.y)
+    .attr("r", 0)
+    .attr("fill", "#4ecdc4")
+    .attr("fill-opacity", 0.5)
+    .attr("stroke", "#00bfa5")
+    .attr("stroke-width", 0.2)
+    .transition()
+    .duration(1000)
+    .delay(300)
+    .ease(d3.easeSinOut)
+    .attr("r", d => getRadius(d.population));
+
+  TIME && console.timeEnd("drawPopulation");
 }
 
 function toggleCells(event) {
@@ -822,6 +846,19 @@ function toggleRoutes(event) {
   } else {
     if (event && isCtrlClick(event)) return editStyle("routes");
     routes.selectAll("path").remove();
+    // Also remove route labels and marks when routes are hidden
+    if (window.routeLabelsEnabled) {
+      routes.select("#routeLabels").selectAll("*").remove();
+      window.routeLabelsEnabled = false;
+      const btn = byId("routesToggleLabels");
+      if (btn) btn.classList.remove("pressed");
+    }
+    if (window.routeMarksEnabled) {
+      routes.select("#routeMarks").selectAll("*").remove();
+      window.routeMarksEnabled = false;
+      const btn = byId("routesToggleMarks");
+      if (btn) btn.classList.remove("pressed");
+    }
     turnButtonOff("toggleRoutes");
   }
 }
@@ -842,7 +879,196 @@ function drawRoutes() {
     routes.select("#" + group).html(routePaths[group].join(""));
   }
 
+  if (window.routeLabelsEnabled) drawRouteLabels();
+  if (window.routeMarksEnabled) drawRouteMarks();
+
   TIME && console.timeEnd("drawRoutes");
+}
+
+function drawRouteLabels() {
+  TIME && console.time("drawRouteLabels");
+
+  // Initialize route labels group if it doesn't exist
+  if (!routes.select("#routeLabels").size()) {
+    routes.append("g").attr("id", "routeLabels");
+  }
+
+  const labelsGroup = routes.select("#routeLabels");
+  labelsGroup.selectAll("*").remove();
+
+  const labeledGroups = ["route-a", "route-c", "route-e"];
+  const labelIntervalKm = 25; // Show label every 25 km
+  const labelInterval = labelIntervalKm / distanceScale; // Convert to map units
+
+  // Font and color settings for each route group
+  const groupSettings = {
+    "route-a": {fontColor: "#ffffff"},
+    "route-c": {fontColor: "#ffffff"},
+    "route-e": {fontColor: "#000000"}
+  };
+
+  for (const route of pack.routes) {
+    const {i, group, name} = route;
+    if (!labeledGroups.includes(group)) continue;
+    if (!name) continue;
+
+    const pathElement = routes.select("#route" + i).node();
+    if (!pathElement) continue;
+
+    const pathLength = pathElement.getTotalLength();
+    const routeColor = routes.select("#" + group).attr("stroke") || "#000000";
+    const fontColor = groupSettings[group].fontColor;
+    const shortName = (name || "").substring(0, 4);
+
+    // Place labels at start+10km, end-10km, and at intervals
+    const offsetKm = 10; // 10km offset from start/end
+    const offset = offsetKm / distanceScale; // Convert to map units
+
+    const distances = [];
+
+    // Add start label (10km from start)
+    if (pathLength > offset) {
+      distances.push(offset);
+    }
+
+    // Add interval labels
+    for (let distance = offset + labelInterval; distance < pathLength - offset; distance += labelInterval) {
+      distances.push(distance);
+    }
+
+    // Add end label (10km before end)
+    if (pathLength > offset * 2) {
+      distances.push(pathLength - offset);
+    }
+
+    for (const distance of distances) {
+      const point = pathElement.getPointAtLength(distance);
+
+      // Calculate adaptive oval size based on text length
+      const fontSize = 2.5;
+      const textLength = shortName.length;
+      const radiusY = 1.8; // Fixed vertical radius
+      const radiusX = textLength <= 2 ? radiusY : radiusY * (textLength * 0.55); // Adaptive horizontal radius
+
+      // Draw oval/circle background
+      labelsGroup
+        .append("ellipse")
+        .attr("cx", point.x)
+        .attr("cy", point.y)
+        .attr("rx", radiusX)
+        .attr("ry", radiusY)
+        .attr("fill", routeColor)
+        .attr("stroke", "none");
+
+      // Draw text label
+      labelsGroup
+        .append("text")
+        .attr("x", point.x)
+        .attr("y", point.y)
+        .attr("fill", fontColor)
+        .attr("font-size", fontSize + "px")
+        .attr("font-family", "Arial")
+        .attr("font-weight", "bold")
+        .attr("text-anchor", "middle")
+        .attr("dominant-baseline", "middle")
+        .text(shortName);
+    }
+  }
+
+  TIME && console.timeEnd("drawRouteLabels");
+}
+
+function drawRouteMarks() {
+  TIME && console.time("drawRouteMarks");
+
+  // Initialize route marks group if it doesn't exist
+  if (!routes.select("#routeMarks").size()) {
+    routes.append("g").attr("id", "routeMarks");
+  }
+
+  const marksGroup = routes.select("#routeMarks");
+  marksGroup.selectAll("*").remove();
+
+  const labeledGroups = ["route-a", "route-c", "route-e"];
+  const markIntervalKm = 2; // Show distance mark every 2 km
+  const markInterval = markIntervalKm / distanceScale; // Convert to map units
+
+  for (const route of pack.routes) {
+    const {i, group} = route;
+    if (!labeledGroups.includes(group)) continue;
+
+    const pathElement = routes.select("#route" + i).node();
+    if (!pathElement) continue;
+
+    const pathLength = pathElement.getTotalLength();
+
+    // Draw distance marks every 2 km
+    for (let distance = markInterval; distance < pathLength; distance += markInterval) {
+      const point = pathElement.getPointAtLength(distance);
+
+      // Get angle at this point to draw perpendicular tick
+      const deltaDistance = 0.1;
+      const point1 = pathElement.getPointAtLength(Math.max(0, distance - deltaDistance));
+      const point2 = pathElement.getPointAtLength(Math.min(pathLength, distance + deltaDistance));
+
+      // Calculate perpendicular angle
+      const angle = Math.atan2(point2.y - point1.y, point2.x - point1.x);
+      const perpAngle = angle + Math.PI / 2;
+
+      // Tick mark size
+      const tickSize = 0.8;
+      const x1 = point.x - Math.cos(perpAngle) * tickSize;
+      const y1 = point.y - Math.sin(perpAngle) * tickSize;
+      const x2 = point.x + Math.cos(perpAngle) * tickSize;
+      const y2 = point.y + Math.sin(perpAngle) * tickSize;
+
+      marksGroup
+        .append("line")
+        .attr("x1", x1)
+        .attr("y1", y1)
+        .attr("x2", x2)
+        .attr("y2", y2)
+        .attr("stroke", "#000000")
+        .attr("stroke-width", 0.4)
+        .attr("stroke-linecap", "round");
+    }
+  }
+
+  TIME && console.timeEnd("drawRouteMarks");
+}
+
+function toggleRouteLabels() {
+  if (!window.routeLabelsEnabled) {
+    if (!layerIsOn("toggleRoutes")) toggleRoutes();
+    window.routeLabelsEnabled = true;
+    drawRouteLabels();
+    // Update button visual state
+    const btn = byId("routesToggleLabels");
+    if (btn) btn.classList.add("pressed");
+  } else {
+    routes.select("#routeLabels").selectAll("*").remove();
+    window.routeLabelsEnabled = false;
+    // Update button visual state
+    const btn = byId("routesToggleLabels");
+    if (btn) btn.classList.remove("pressed");
+  }
+}
+
+function toggleRouteMarks() {
+  if (!window.routeMarksEnabled) {
+    if (!layerIsOn("toggleRoutes")) toggleRoutes();
+    window.routeMarksEnabled = true;
+    drawRouteMarks();
+    // Update button visual state
+    const btn = byId("routesToggleMarks");
+    if (btn) btn.classList.add("pressed");
+  } else {
+    routes.select("#routeMarks").selectAll("*").remove();
+    window.routeMarksEnabled = false;
+    // Update button visual state
+    const btn = byId("routesToggleMarks");
+    if (btn) btn.classList.remove("pressed");
+  }
 }
 
 function toggleMilitary(event) {

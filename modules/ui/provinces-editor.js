@@ -138,6 +138,7 @@ function editProvinces() {
       const separable = p.burg && p.burg !== pack.states[p.state].capital;
       const focused = defs.select("#fog #focusProvince" + p.i).size();
       COArenderer.trigger("provinceCOA" + p.i, p.coa);
+      const density = area ? rn(population / area, 2) : 0;
       lines += /* html */ `<div
         class="states"
         data-id=${p.i}
@@ -148,6 +149,7 @@ function editProvinces() {
         data-state="${stateName}"
         data-area=${area}
         data-population=${population}
+        data-density=${density}
         data-burgs=${p.burgs.length}
       >
         <fill-box fill="${p.color}"></fill-box>
@@ -174,6 +176,8 @@ function editProvinces() {
         <div data-tip="Province area" class="biomeArea hide">${si(area) + unit}</div>
         <span data-tip="${populationTip}" class="icon-male hide"></span>
         <div data-tip="${populationTip}" class="culturePopulation hide">${si(population)}</div>
+        <span data-tip="Population density" class="icon-users hide"></span>
+        <div data-tip="Population density" class="provinceDensity hide">${density}</div>
         <span
           data-tip="Declare province independence (turn non-capital province with burgs into a new state)"
           class="icon-flag-empty ${separable ? "" : "placeholder"} hide"

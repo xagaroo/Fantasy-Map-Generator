@@ -21,7 +21,7 @@ export function open() {
 
 function insertEditorHtml() {
   const editorHtml = /* html */ `<div id="statesEditor" class="dialog stable">
-    <div id="statesHeader" class="header" style="grid-template-columns: 11em 8em 7em 7em 6em 6em 8em 6em 7em 6em">
+    <div id="statesHeader" class="header" style="grid-template-columns: 11em 8em 7em 7em 6em 6em 8em 8em 6em 7em 6em">
       <div data-tip="Click to sort by state name" class="sortable alphabetically" data-sortby="name">State&nbsp;</div>
       <div data-tip="Click to sort by state form name" class="sortable alphabetically" data-sortby="form">Form&nbsp;</div>
       <div data-tip="Click to sort by capital name" class="sortable alphabetically" data-sortby="capital">Capital&nbsp;</div>
@@ -29,6 +29,7 @@ function insertEditorHtml() {
       <div data-tip="Click to sort by state burgs count" class="sortable hide" data-sortby="burgs">Burgs&nbsp;</div>
       <div data-tip="Click to sort by state area" class="sortable hide icon-sort-number-down" data-sortby="area">Area&nbsp;</div>
       <div data-tip="Click to sort by state population" class="sortable hide" data-sortby="population">Population&nbsp;</div>
+      <div data-tip="Click to sort by state population density" class="sortable hide" data-sortby="density">Density&nbsp;</div>
       <div data-tip="Click to sort by state type" class="sortable alphabetically hidden show hide" data-sortby="type">Type&nbsp;</div>
       <div data-tip="Click to sort by state expansion value" class="sortable hidden show hide" data-sortby="expansionism">Expansion&nbsp;</div>
       <div data-tip="Click to sort by state cells count" class="sortable hidden show hide" data-sortby="cells">Cells&nbsp;</div>
@@ -180,6 +181,7 @@ function statesEditorAddLines() {
         data-cells=${s.cells}
         data-area=${area}
         data-population=${population}
+        data-density=${area ? rn(population / area, 2) : 0}
         data-burgs=${s.burgs}
         data-color=""
         data-form=""
@@ -203,6 +205,8 @@ function statesEditorAddLines() {
         <div data-tip="Neutral lands area" class="stateArea hide" style="width: 6em">${si(area)} ${unit}</div>
         <span data-tip="${populationTip}" class="icon-male hide"></span>
         <div data-tip="${populationTip}" class="statePopulation pointer hide" style="width: 5em">${si(population)}</div>
+        <span data-tip="Population density" class="icon-users hide"></span>
+        <div data-tip="Population density" class="stateDensity hide" style="width: 6em">${area ? rn(population / area, 2) : 0}</div>
         <select class="cultureType ${hidden} placeholder show hide">${getTypeOptions(0)}</select>
         <span class="icon-resize-full ${hidden} placeholder show hide"></span>
         <input class="statePower ${hidden} placeholder show hide" type="number" value="0" />
@@ -224,6 +228,7 @@ function statesEditorAddLines() {
       data-cells=${s.cells}
       data-area=${area}
       data-population=${population}
+      data-density=${area ? rn(population / area, 2) : 0}
       data-burgs=${s.burgs}
       data-culture=${pack.cultures[s.culture].name}
       data-type=${s.type}
@@ -248,6 +253,8 @@ function statesEditorAddLines() {
       <div data-tip="State area" class="stateArea hide" style="width: 6em">${si(area)} ${unit}</div>
       <span data-tip="${populationTip}" class="icon-male hide"></span>
       <div data-tip="${populationTip}" class="statePopulation pointer hide" style="width: 5em">${si(population)}</div>
+      <span data-tip="Population density" class="icon-users hide"></span>
+      <div data-tip="Population density" class="stateDensity hide" style="width: 6em">${area ? rn(population / area, 2) : 0}</div>
       <select data-tip="State type. Defines growth model. Click to change" class="cultureType ${hidden} show hide">${getTypeOptions(
       s.type
     )}</select>

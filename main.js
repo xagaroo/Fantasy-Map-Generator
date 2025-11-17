@@ -203,6 +203,11 @@ let distanceScale = +byId("distanceScaleInput").value;
 let urbanization = +byId("urbanizationInput").value;
 let urbanDensity = +byId("urbanDensityInput").value;
 
+// Route labels enabled by default
+window.routeLabelsEnabled = true;
+// Route distance marks disabled by default
+window.routeMarksEnabled = false;
+
 applyStoredOptions();
 
 // voronoi graph extension, cannot be changed after generation

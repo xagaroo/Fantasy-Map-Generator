@@ -730,6 +730,12 @@ async function parseLoadedData(data, mapVersion) {
     }
 
     {
+      // redraw burg icons and labels with population-based styling
+      drawBurgIcons();
+      drawBurgLabels();
+    }
+
+    {
       if (window.restoreDefaultEvents) restoreDefaultEvents();
       focusOn(); // based on searchParams focus on point, cell or burg
       invokeActiveZooming();

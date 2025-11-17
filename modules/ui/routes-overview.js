@@ -23,8 +23,20 @@ function overviewRoutes() {
   byId("routesOverviewRefresh").on("click", routesOverviewAddLines);
   byId("routesCreateNew").on("click", createRoute);
   byId("routesExport").on("click", downloadRoutesData);
+  byId("routesToggleLabels").on("click", toggleRouteLabels);
+  byId("routesToggleMarks").on("click", toggleRouteMarks);
   byId("routesLockAll").on("click", toggleLockAll);
   byId("routesRemoveAll").on("click", triggerAllRoutesRemove);
+
+  // Set initial button states
+  if (window.routeLabelsEnabled) {
+    const btn = byId("routesToggleLabels");
+    if (btn) btn.classList.add("pressed");
+  }
+  if (window.routeMarksEnabled) {
+    const btn = byId("routesToggleMarks");
+    if (btn) btn.classList.add("pressed");
+  }
 
   // add line for each route
   function routesOverviewAddLines() {

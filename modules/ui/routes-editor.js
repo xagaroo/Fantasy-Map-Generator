@@ -241,15 +241,46 @@ function editRoute(id) {
     const firstCell = route.points.at(0)[2];
     const lastCell = route.points.at(-1)[2];
 
+    console.log("=== JOIN ROUTES DEBUG ===");
+    console.log(`Current route ${route.i}: group=${route.group}, firstCell=${firstCell}, lastCell=${lastCell}`);
+    console.log(`Total routes in pack: ${pack.routes.length}`);
+
     const candidateRoutes = pack.routes.filter(r => {
-      if (r.i === route.i) return false;
-      if (r.group !== route.group) return false;
-      if (r.points.at(0)[2] === lastCell) return true;
-      if (r.points.at(-1)[2] === firstCell) return true;
-      if (r.points.at(0)[2] === firstCell) return true;
-      if (r.points.at(-1)[2] === lastCell) return true;
+      if (r.i === route.i) {
+        console.log(`  Route ${r.i}: SKIP (same route)`);
+        return false;
+      }
+      if (r.group !== route.group) {
+        console.log(`  Route ${r.i}: SKIP (different group: ${r.group} vs ${route.group})`);
+        return false;
+      }
+
+      const rFirstCell = r.points.at(0)[2];
+      const rLastCell = r.points.at(-1)[2];
+      console.log(`  Route ${r.i}: group=${r.group}, firstCell=${rFirstCell}, lastCell=${rLastCell}`);
+
+      if (r.points.at(0)[2] === lastCell) {
+        console.log(`    ✓ MATCH: Route ${r.i} starts (${rFirstCell}) where current ends (${lastCell})`);
+        return true;
+      }
+      if (r.points.at(-1)[2] === firstCell) {
+        console.log(`    ✓ MATCH: Route ${r.i} ends (${rLastCell}) where current starts (${firstCell})`);
+        return true;
+      }
+      if (r.points.at(0)[2] === firstCell) {
+        console.log(`    ✓ MATCH: Route ${r.i} starts (${rFirstCell}) where current starts (${firstCell})`);
+        return true;
+      }
+      if (r.points.at(-1)[2] === lastCell) {
+        console.log(`    ✓ MATCH: Route ${r.i} ends (${rLastCell}) where current ends (${lastCell})`);
+        return true;
+      }
+      console.log(`    ✗ NO MATCH`);
       return false;
     });
+
+    console.log(`Found ${candidateRoutes.length} candidate routes to join`);
+    console.log("=== END DEBUG ===");
 
     if (candidateRoutes.length) {
       const options = candidateRoutes.map(r => {
@@ -357,7 +388,8 @@ function editRoute(id) {
     showElevationProfile(
       route.points.map(p => p[2]),
       length,
-      false
+      false,
+      route.i // Pass the current route ID to detect intersections
     );
   }
 
